@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Turbo
+.turbo/
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# NestJS / Node build output
+dist/
+coverage/
+.nyc_output/
+
+# Caches
+.cache/
+.eslintcache
+.swc/
+.tsbuildinfo
+*.tsbuildinfo
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
