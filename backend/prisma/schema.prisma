@@ -39,6 +39,7 @@ model RefreshToken {
 enum Role {
   USER
   ADMIN
+  DOCTOR
 }
 
 // ==================
@@ -51,7 +52,6 @@ model UserProfile {
   fullName  String?
   avatarUrl String?
   bio       String?
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())

@@ -6,11 +6,12 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "prisma db push && nest start --watch",
+    "dev": "prisma db push && (nodemon --watch prisma/schema.prisma --exec 'prisma db push' &) && nest start --watch",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
+    "db:watch": "nodemon --watch prisma/schema.prisma --exec \"prisma db push\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest"
   },
@@ -50,6 +51,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.0.0",
+    "nodemon": "^3.1.14",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
