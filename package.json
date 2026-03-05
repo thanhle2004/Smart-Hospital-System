@@ -3,7 +3,13 @@
   "private": true,
   "devDependencies": {
     "@types/node": "^25.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.2",
+    "eslint-config-next": "16.1.6",
     "nodemon": "^3.1.14",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "latest"
   },
   "scripts": {
