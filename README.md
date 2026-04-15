@@ -118,7 +118,7 @@ The platform reduces waiting time through multiple mechanisms:
 | Monorepo | Turbo, pnpm workspaces |
 | Backend API | NestJS (TypeScript) |
 | ORM | Prisma ORM |
-| Database | **MySQL** (inferred from `prisma/schema.prisma`) |
+| Database | **MySQL** |
 | Realtime | Socket.IO (NestJS WebSocket Gateway + socket.io-client) |
 | Authentication | JWT (access + refresh), cookies, Passport JWT |
 | Validation | Zod (custom NestJS validation pipe) |
@@ -487,10 +487,3 @@ Expected institutional outcomes include:
 - Integrated real-time communication with Socket.IO
 - Designed secure authentication and authorization mechanisms (JWT, RBAC, HMAC tokens)
 
----
-
-## 14. License
-
-This project is currently **UNLICENSED** (all rights reserved).
-
-If you plan to open-source this repository, consider adopting a license such as MIT, Apache-2.0, or GPL-3.0 and add a `LICENSE` file at the repository root.
