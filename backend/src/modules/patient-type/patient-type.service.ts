@@ -4,104 +4,52 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { CreatePatientTypeDto } from './dto/create-patient-type.dto';
+import { UpdatePatientTypeDto } from './dto/update-patient-type.dto';
+import { PatientTypeRepository } from './patient-type.repository';
 
 @Injectable()
 export class PatientTypeService {
-  constructor(private prisma: PrismaService) {}
-
-  async create(data: {
-    code: string;
-    name: string;
-    description?: string;
-    basePriority?: number;
-  }) {
-    try {
-      return await this.prisma.patientType.create({
-        data,
-      });
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('PatientType code already exists');
-      }
-      throw error;
-    }
-  }
-
+  constructor(private readonly repo: PatientTypeRepository) {}
+ 
   async findAll() {
-    return this.prisma.patientType.findMany({
-      orderBy: { id: 'asc' },
-    });
+    return this.repo.findAll();
   }
-
+ 
   async findOne(id: number) {
-    const type = await this.prisma.patientType.findUnique({
-      where: { id },
-      include: {
-        patients: true,
-        priorityRules: true,
-      },
-    });
-
-    if (!type) {
-      throw new NotFoundException('PatientType not found');
-    }
-
-    return type;
+    const patientType = await this.repo.findOne(id);
+    if (!patientType) throw new NotFoundException(`PatientType #${id} not found`);
+    return patientType;
   }
-
-  async update(
-    id: number,
-    data: {
-      code?: string;
-      name?: string;
-      description?: string;
-      basePriority?: number;
-      isActive?: boolean;
-    },
-  ) {
+ 
+  async create(dto: CreatePatientTypeDto) {
+    const existing = await this.repo.findByCode(dto.code);
+    if (existing) throw new ConflictException(`Code "${dto.code}" already exists`);
+ 
+    return this.repo.create(dto);
+  }
+ 
+  async update(id: number, dto: UpdatePatientTypeDto) {
     await this.findOne(id);
-
-    try {
-      return await this.prisma.patientType.update({
-        where: { id },
-        data,
-      });
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('PatientType code already exists');
-      }
-      throw error;
-    }
+ 
+    return this.repo.update(id, dto);
   }
-
+ 
   async remove(id: number) {
-    const type = await this.prisma.patientType.findUnique({
-      where: { id },
-      include: { patients: true },
-    });
-
-    if (!type) {
-      throw new NotFoundException('PatientType not found');
-    }
-
-    if (type.patients.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete PatientType because patients are using it',
+    await this.findOne(id);
+ 
+    const hasPatients = await this.repo.countPatients(id);
+    if (hasPatients > 0) {
+      throw new ConflictException(
+        'Cannot delete: PatientType is in use by existing patients',
       );
     }
-
-    return this.prisma.patientType.delete({
-      where: { id },
-    });
+ 
+    return this.repo.delete(id);
   }
-
-  async disable(id: number) {
-    await this.findOne(id);
-
-    return this.prisma.patientType.update({
-      where: { id },
-      data: { isActive: false },
-    });
+ 
+  async toggleActive(id: number) {
+    const patientType = await this.findOne(id);
+    return this.repo.toggleActive(id, !patientType.isActive);
   }
 }

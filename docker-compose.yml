@@ -9,27 +9,26 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://admin:password@db:5432/monorepo?schema=public
+      DATABASE_URL: mysql://root:123456@db:3306/smart_hospital
       JWT_ACCESS_SECRET: access-secret
       JWT_REFRESH_SECRET: refresh-secret
 
   db:
-    image: postgres:16
+    image: mysql:8.4
     container_name: monorepo-db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: monorepo
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: smart_hospital
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d monorepo"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgres_data:
+  mysql_data:

@@ -1,79 +1,104 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { PriorityRule } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, PriorityRule } from '@prisma/client';
+import { CreatePriorityRuleDto } from './dto/create-priority-rule.dto';
+import { UpdatePriorityRuleDto } from './dto/update-priority-rule.dto';
+import { PriorityRepository } from './priority.repository';
 
 @Injectable()
 export class PriorityService {
-  constructor(private prisma: PrismaService) {}
-
-  async create(data: {
-    ruleName: string;
-    minAge?: number;
-    maxAge?: number;
-    patientTypeId?: number;
-    isEmergency?: boolean;
-    priorityValue: number;
-    applyOrder?: number;
-  }) {
-    return this.prisma.priorityRule.create({
-      data,
-    });
-  }
+  constructor(private readonly repo: PriorityRepository) {}
 
   async findAll() {
-    return this.prisma.priorityRule.findMany({
-      where: { isActive: true },
-      orderBy: { applyOrder: 'asc' },
-    });
+    return this.repo.findAll();
   }
-
+ 
   async findOne(id: number) {
-    return this.prisma.priorityRule.findUnique({
-      where: { id },
-    });
+    const rule = await this.repo.findOne(id);
+    if (!rule) throw new NotFoundException(`PriorityRule #${id} not found`);
+    return rule;
   }
 
-  async update(id: number, data: Partial<PriorityRule>) {
-    return this.prisma.priorityRule.update({
-      where: { id },
-      data,
-    });
+  async create(dto: CreatePriorityRuleDto) {
+    this.validateAgeRange(dto.minAge, dto.maxAge);
+ 
+    if (dto.patientTypeId) {
+      await this.assertPatientTypeExists(dto.patientTypeId);
+    }
+ 
+    return this.repo.create(dto);
   }
-
+ 
+  async update(id: number, dto: UpdatePriorityRuleDto) {
+    const rule = await this.findOne(id);
+ 
+    const minAge = dto.minAge ?? rule.minAge ?? undefined;
+    const maxAge = dto.maxAge ?? rule.maxAge ?? undefined;
+    this.validateAgeRange(minAge, maxAge);
+ 
+    if (dto.patientTypeId) {
+      await this.assertPatientTypeExists(dto.patientTypeId);
+    }
+ 
+    return this.repo.update(id, dto);
+  }
+ 
   async remove(id: number) {
-    return this.prisma.priorityRule.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    await this.findOne(id);
+    return this.repo.delete(id);
+  }
+ 
+  async toggleActive(id: number) {
+    const rule = await this.findOne(id);
+    return this.repo.toggleActive(id, !rule.isActive);
   }
 
-  async applyPriority(params: {
-    age?: number;
-    patientTypeId?: number;
-    isEmergency?: boolean;
-  }) {
+  private validateAgeRange(minAge?: number, maxAge?: number) {
+    if (minAge !== undefined && maxAge !== undefined && minAge > maxAge) {
+      throw new BadRequestException('minAge must be less than or equal to maxAge');
+    }
+  }
+ 
+  private async assertPatientTypeExists(patientTypeId: number) {
+    const pt = await this.repo.findPatientType(patientTypeId);
+    if (!pt) throw new NotFoundException(`PatientType #${patientTypeId} not found`);
+  }
+
+  async applyPriority(
+    params: {
+      age?: number;
+      patientTypeId?: number;
+      isEmergency?: boolean;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
     const { age, patientTypeId, isEmergency } = params;
 
-    const rules = await this.prisma.priorityRule.findMany({
-      where: { isActive: true },
-      orderBy: { applyOrder: 'asc' },
-    });
+    const rules = await this.repo.findActiveRules(tx);
 
     for (const rule of rules) {
-      // Emergency check
-      if (rule.isEmergency && isEmergency) {
-        return rule;
+      ////////////////////////////////////////////////
+      // EMERGENCY CHECK
+      ////////////////////////////////////////////////
+      if (rule.isEmergency !== null) {
+        if (rule.isEmergency === isEmergency) {
+          return rule;
+        }
+        continue;
       }
 
-      // Patient type check
-      if (
-        rule.patientTypeId &&
-        rule.patientTypeId === patientTypeId
-      ) {
-        return rule;
+      ////////////////////////////////////////////////
+      // PATIENT TYPE CHECK
+      ////////////////////////////////////////////////
+      if (rule.patientTypeId !== null) {
+        if (rule.patientTypeId === patientTypeId) {
+          return rule;
+        }
+        continue;
       }
 
-      // Age check
+      ////////////////////////////////////////////////
+      // AGE CHECK
+      ////////////////////////////////////////////////
       if (
         rule.minAge !== null &&
         rule.maxAge !== null &&

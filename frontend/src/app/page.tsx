@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatMinutesFromSeconds } from '@/lib/time'
 
 const API_BASE = 'http://localhost:5000'
 
@@ -34,7 +35,7 @@ export default function TestPage() {
     }
   }
 
-  // load lần đầu
+  // Initial load
   useEffect(() => {
     fetchRooms()
   }, [])
@@ -62,14 +63,14 @@ export default function TestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patientId: patient.id,
-          flowId: 4,
+          flowId: 3,
           age: 30,
         }),
       })
 
       setCounter((prev) => prev + 1)
 
-      // reload dashboard sau khi checkin
+      // Reload dashboard after check-in
       await fetchRooms()
 
     } catch (err) {
@@ -122,7 +123,7 @@ export default function TestPage() {
                       <p>
                         Avg Process:
                         <span className="font-semibold ml-1">
-                          {room.avgProcessTime} phút
+                          {formatMinutesFromSeconds(room.avgProcessTime)}
                         </span>
                       </p>
 

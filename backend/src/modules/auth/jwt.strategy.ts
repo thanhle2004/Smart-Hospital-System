@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
+import { env } from 'src/config/env';
 
 function cookieExtractor(req: Request): string | null {
     return req?.cookies?.[process.env.COOKIE_ACCESS ?? 'access_token'] ?? null;
@@ -15,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 cookieExtractor,
                 ExtractJwt.fromAuthHeaderAsBearerToken(),
             ]),
-            secretOrKey: process.env.JWT_ACCESS_SECRET!,
+            secretOrKey: env.JWT_ACCESS_SECRET,
         });
     }
 

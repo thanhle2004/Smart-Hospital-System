@@ -1,4 +1,15 @@
 packages:
-  - "frontend"
-  - "backend"
-  - "packages/*"
+  - frontend
+  - backend
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@scarf/scarf'
+  - bcrypt
+  - msw
+  - prisma
+  - sharp
+  - unrs-resolver

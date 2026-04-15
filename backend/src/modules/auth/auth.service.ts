@@ -4,128 +4,174 @@ import {
     ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { HashService } from 'src/shared/services/hash.service';
 import type { SignOptions } from 'jsonwebtoken';
 import { env } from 'src/config/env';
+import { Role } from '@prisma/client';
+import type { CreateRegisterDto } from './dto/register.dto';
+import type { CreateLoginDto } from './dto/login.dto';
+import { AuthResponseDto, userResponseSchema } from './dto/response.dto';
+import { AuthRepository } from './auth.repository';
 
 @Injectable()
 export class AuthService {
-    constructor(private prisma: PrismaService, private jwt: JwtService) { }
+    constructor(
+        private readonly repo: AuthRepository,
+        private readonly jwt: JwtService,
+        private readonly hashService: HashService,
+    ) { }
+
     private accessExpiresIn = env.ACCESS_TOKEN_EXPIRES_IN as SignOptions['expiresIn'];
     private refreshExpiresIn = env.REFRESH_TOKEN_EXPIRES_IN as SignOptions['expiresIn'];
+
     private signAccessToken(user: { id: string; email: string; role?: string }) {
         return this.jwt.sign(
             { sub: user.id, email: user.email, role: user.role },
-            { secret: process.env.JWT_ACCESS_SECRET!, expiresIn: this.accessExpiresIn },
+            { secret: env.JWT_ACCESS_SECRET, expiresIn: this.accessExpiresIn },
         );
     }
 
     private signRefreshToken(user: { id: string; email: string; role?: string }) {
         return this.jwt.sign(
             { sub: user.id, email: user.email, role: user.role },
-            { secret: process.env.JWT_REFRESH_SECRET!, expiresIn: this.refreshExpiresIn },
+            { secret: env.JWT_REFRESH_SECRET, expiresIn: this.refreshExpiresIn },
         );
     }
 
-    async register(email: string, password: string) {
-        const existing = await this.prisma.user.findUnique({ where: { email } });
+    async register(data: CreateRegisterDto): Promise<AuthResponseDto> {
+        const { email, password, role } = data;
+        const existing = await this.repo.findUserByEmail(email);
         if (existing) throw new ConflictException('Email already exists');
 
-        const passwordHash = await bcrypt.hash(password, 10);
+        const passwordHash = await this.hashService.hash(password);
 
-        const user = await this.prisma.user.create({
-            data: { email, passwordHash },
-        });
-
-        return { id: user.id, email: user.email };
-    }
-
-    async login(email: string, password: string) {
-        const user = await this.prisma.user.findUnique({ where: { email } });
-        if (!user) throw new UnauthorizedException('Invalid credentials');
-
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) throw new UnauthorizedException('Invalid credentials');
+        const user = await this.repo.createUser({ email, passwordHash, role: role as Role });
 
         const accessToken = this.signAccessToken(user);
         const refreshToken = this.signRefreshToken(user);
 
-        const tokenHash = await bcrypt.hash(refreshToken, 10);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7d (đơn giản)
-
-        await this.prisma.refreshToken.create({
-            data: { userId: user.id, tokenHash, expiresAt },
+        const tokenHash = await this.hashService.hash(refreshToken);
+        await this.repo.createRefreshToken({
+            userId: user.id,
+            tokenHash,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
 
-        return { accessToken, refreshToken };
+        return {
+            user: userResponseSchema.parse(user),
+            accessToken,
+            refreshToken,
+        };
+    }
+
+    async login(data: CreateLoginDto): Promise<AuthResponseDto> {
+        const { email, password } = data;
+        const user = await this.repo.findAuthUserByEmail(email);
+        const dummyHash = '$2b$10$C6k7i35S3uK0.XPBm7P6du5A.96.Hk5C6k7i35S3uK0.XPBm7P6du';
+    
+        const hashToCompare = user ? user.passwordHash : dummyHash;
+        const isMatch = await this.hashService.compare(password, hashToCompare);
+
+        if (!user || !isMatch) {
+            throw new UnauthorizedException('Incorrect email or password. Please try again.');
+        }
+
+        const accessToken = this.signAccessToken(user);
+        const refreshToken = this.signRefreshToken(user);
+
+        const tokenHash = await this.hashService.hash(refreshToken);
+        await this.repo.createRefreshToken({
+            userId: user.id,
+            tokenHash,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+
+        return {
+            user: userResponseSchema.parse(user),
+            accessToken,
+            refreshToken,
+        };
     }
 
     async refresh(refreshToken: string) {
-        // verify refresh jwt signature
         let payload: any;
         try {
-            payload = this.jwt.verify(refreshToken, {
-                secret: process.env.JWT_REFRESH_SECRET!,
-            });
+            payload = this.jwt.verify(refreshToken, { secret: env.JWT_REFRESH_SECRET });
         } catch {
             throw new UnauthorizedException('Invalid refresh token');
         }
 
-        const userId = payload.sub as string;
+        const userId = payload.sub;
 
-        // find valid token in DB by comparing hash
-        const tokens = await this.prisma.refreshToken.findMany({
-            where: { userId, expiresAt: { gt: new Date() } },
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-        });
+        //Find matching token in DB (using hash comparison) which is not revoked and not expired
+        const tokens = await this.repo.findRefreshTokens(userId, 10);
 
         const matched = await Promise.any(
-            tokens.map(async (t) => ((await bcrypt.compare(refreshToken, t.tokenHash)) ? t : Promise.reject())),
+            tokens.map(async (t) => 
+                (await this.hashService.compare(refreshToken, t.tokenHash)) ? t : Promise.reject()
+            ),
         ).catch(() => null);
 
         if (!matched) throw new UnauthorizedException('Refresh token not found');
 
-        // rotate: delete matched token, create new
-        await this.prisma.refreshToken.delete({ where: { id: matched.id } });
+        //Use transaction to revoke old token and create new one atomically
+        return this.repo.transaction(async (tx) => {
+            await this.repo.revokeRefreshToken(matched.id, tx);
 
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        if (!user) throw new UnauthorizedException('User not found');
+            const user = await this.repo.findAuthUserById(userId, tx);
+            if (!user) throw new UnauthorizedException('User not found');
 
-        const newAccessToken = this.signAccessToken(user);
-        const newRefreshToken = this.signRefreshToken(user);
+            const newAccessToken = this.signAccessToken(user);
+            const newRefreshToken = this.signRefreshToken(user);
+            const newTokenHash = await this.hashService.hash(newRefreshToken);
 
-        await this.prisma.refreshToken.create({
-            data: {
+            await this.repo.createRefreshToken({
                 userId: user.id,
-                tokenHash: await bcrypt.hash(newRefreshToken, 10),
+                tokenHash: newTokenHash,
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            },
-        });
+            }, tx);
 
-        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+            return { 
+                user: userResponseSchema.parse(user),
+                accessToken: newAccessToken, 
+                refreshToken: newRefreshToken 
+            };
+        });
     }
 
     async logout(userId: string, refreshToken?: string) {
-        // nếu có refreshToken thì chỉ revoke 1 cái; còn không thì revoke all
         if (refreshToken) {
-            const tokens = await this.prisma.refreshToken.findMany({
-                where: { userId },
-                take: 20,
-                orderBy: { createdAt: 'desc' },
-            });
+            const tokens = await this.repo.findRefreshTokens(userId, 20);
 
             for (const t of tokens) {
-                if (await bcrypt.compare(refreshToken, t.tokenHash)) {
-                    await this.prisma.refreshToken.delete({ where: { id: t.id } });
+                if (await this.hashService.compare(refreshToken, t.tokenHash)) {
+                    await this.repo.deleteRefreshToken(t.id);
                     break;
                 }
             }
         } else {
-            await this.prisma.refreshToken.deleteMany({ where: { userId } });
+            await this.repo.deleteRefreshTokensByUser(userId);
         }
 
         return { message: 'Logged out' };
+    }
+
+    async me(userId: string) {
+        return this.repo.findUserById(userId);
+    }
+
+    async verifyPassword(userId: string, password: string) {
+        const user = await this.repo.findPasswordHashById(userId);
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const matched = await this.hashService.compare(password, user.passwordHash);
+        if (!matched) {
+            throw new UnauthorizedException('Incorrect password');
+        }
+
+        return { verified: true };
     }
 }
