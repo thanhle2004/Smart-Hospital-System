@@ -1,85 +1,70 @@
 // features/doctor/room/services/room.service.ts
+import { api } from '@/lib/axios'
 import type { ActiveRoom, RoomDetail, RoomDoctor, VisitRoom } from '../types/room.type'
 
 export interface CurrentAssignment extends RoomDoctor {
   room: RoomDetail
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include',
-  })
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error?.message ?? `Request failed: ${res.status}`)
-  }
-
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
-
 export const doctorRoomService = {
   /** All rooms (for doctor shift selection) */
-  getAll(): Promise<RoomDetail[]> {
-    return request<RoomDetail[]>('/room')
+  async getAll(): Promise<RoomDetail[]> {
+    const response = await api.get<RoomDetail[]>('/room')
+    return response.data
   },
 
   /** Room details + active doctors */
-  getOne(id: number): Promise<RoomDetail> {
-    return request<RoomDetail>(`/room/${id}`)
+  async getOne(id: number): Promise<RoomDetail> {
+    const response = await api.get<RoomDetail>(`/room/${id}`)
+    return response.data
   },
 
   /** Active doctors in this room */
-  getActiveDoctors(roomId: number): Promise<RoomDoctor[]> {
-    return request<RoomDoctor[]>(`/room/${roomId}/doctors`)
+  async getActiveDoctors(roomId: number): Promise<RoomDoctor[]> {
+    const response = await api.get<RoomDoctor[]>(`/room/${roomId}/doctors`)
+    return response.data
   },
 
-  /** Queue: { waiting, current } */
-  getQueue(roomId: number): Promise<{ waiting: VisitRoom[]; current: VisitRoom | null }> {
-    return request(`/room/${roomId}/queue`)
+  /** Queue: { waiting, inProgress, current } */
+  async getQueue(roomId: number): Promise<{ waiting: VisitRoom[]; inProgress: VisitRoom[]; current: VisitRoom | null; inProgressCount: number }> {
+    const response = await api.get<{ waiting: VisitRoom[]; inProgress: VisitRoom[]; current: VisitRoom | null; inProgressCount: number }>(
+      `/room/${roomId}/queue`,
+    )
+    return response.data
   },
 
   /** Doctor check-in to room */
-  checkIn(roomId: number): Promise<RoomDoctor> {
-    return request<RoomDoctor>(`/room/${roomId}/check-in`, { method: 'POST' })
+  async checkIn(roomId: number): Promise<RoomDoctor> {
+    const response = await api.post<RoomDoctor>(`/room/${roomId}/check-in`)
+    return response.data
   },
 
   /** Doctor check-out from room */
-  checkOut(roomId: number): Promise<void> {
-    return request<void>(`/room/${roomId}/check-out`, { method: 'POST' })
+  async checkOut(roomId: number): Promise<void> {
+    await api.post<void>(`/room/${roomId}/check-out`)
   },
 
   /** Doctor current active room */
-  getCurrentAssignment(): Promise<CurrentAssignment | null> {
-    return request<CurrentAssignment | null>('/room/current-assignment')
+  async getCurrentAssignment(): Promise<CurrentAssignment | null> {
+    const response = await api.get<CurrentAssignment | null>('/room/current-assignment')
+    return response.data
   },
 
   /** Call next patient (WAITING -> IN_PROGRESS) */
-  callPatient(visitRoomId: number): Promise<VisitRoom> {
-    return request<VisitRoom>(`/visit/visit-room/${visitRoomId}/call`, {
-      method: 'POST',
-    })
+  async callPatient(visitRoomId: number): Promise<VisitRoom> {
+    const response = await api.post<VisitRoom>(`/visit/visit-room/${visitRoomId}/call`)
+    return response.data
   },
 
   /** Complete patient visit (IN_PROGRESS -> COMPLETED) */
-  completePatient(visitRoomId: number): Promise<VisitRoom> {
-    return request<VisitRoom>(`/visit/visit-room/${visitRoomId}/complete`, {
-      method: 'POST',
-    })
+  async completePatient(visitRoomId: number): Promise<VisitRoom> {
+    const response = await api.post<VisitRoom>(`/visit/visit-room/${visitRoomId}/complete`)
+    return response.data
   },
 
   /** Skip patient */
-  skipPatient(visitRoomId: number): Promise<VisitRoom> {
-    return request<VisitRoom>(`/visit/visit-room/${visitRoomId}/skip`, {
-      method: 'POST',
-    })
+  async skipPatient(visitRoomId: number): Promise<VisitRoom> {
+    const response = await api.post<VisitRoom>(`/visit/visit-room/${visitRoomId}/skip`)
+    return response.data
   },
 }

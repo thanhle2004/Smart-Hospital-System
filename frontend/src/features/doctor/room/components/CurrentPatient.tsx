@@ -30,23 +30,25 @@ function formatDuration(startTime: string): string {
 }
 
 interface CurrentPatientProps {
-  current: VisitRoom | null
+  inProgress: VisitRoom[]
   loading: boolean
   waitingCount: number
+  canCallNext: boolean
   actionLoading: boolean
-  onComplete: () => void
+  onComplete: (visitRoomId: number) => void
   onCallNext: () => void
 }
 
 export function CurrentPatient({
-  current,
+  inProgress,
   loading,
   waitingCount,
+  canCallNext,
   actionLoading,
   onComplete,
   onCallNext,
 }: CurrentPatientProps) {
-  const [showFlow, setShowFlow] = useState(false)
+  const [flowVisitId, setFlowVisitId] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -58,8 +60,8 @@ export function CurrentPatient({
     )
   }
 
-  // No current patient
-  if (!current) {
+  // No patient in progress
+  if (inProgress.length === 0) {
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-14 gap-4">
@@ -74,7 +76,7 @@ export function CurrentPatient({
                 : 'The waiting list is empty'}
             </p>
           </div>
-          {waitingCount > 0 && (
+          {canCallNext && (
             <Button
               onClick={onCallNext}
               disabled={actionLoading}
@@ -90,115 +92,129 @@ export function CurrentPatient({
     )
   }
 
-  const patient = current.visit.patient
-  const age = new Date().getFullYear() - patient.yearOfBirth
-
   return (
     <div className="space-y-4">
-      <Card className="border-primary/20 bg-primary/[0.03]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-              </span>
-              Currently Examining
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {patient.patientType.name}
-            </Badge>
-          </div>
-        </CardHeader>
+      {inProgress.map((visitRoom, index) => {
+        const patient = visitRoom.visit.patient
+        const age = new Date().getFullYear() - patient.yearOfBirth
+        const isFlowOpen = flowVisitId === visitRoom.visitId
 
-        <CardContent className="space-y-4">
-          {/* Patient details */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                Full Name
-              </p>
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="font-semibold text-sm">{patient.name}</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                Year of Birth
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="font-semibold text-sm">
-                  {patient.yearOfBirth}{' '}
-                  <span className="text-muted-foreground font-normal">
-                    ({age} years old)
+        return (
+          <Card key={visitRoom.id} className="border-primary/20 bg-primary/[0.03]">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                   </span>
-                </span>
+                  Currently Examining #{index + 1}
+                </CardTitle>
+                <Badge variant="outline" className="text-xs">
+                  {patient.patientType.name}
+                </Badge>
               </div>
-            </div>
+            </CardHeader>
 
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                Service
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Stethoscope className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm">
-                  {current.visit.flow?.name ?? 'Unknown service'}
-                </span>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                    Full Name
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="font-semibold text-sm">{patient.name}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                    Year of Birth
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="font-semibold text-sm">
+                      {patient.yearOfBirth}{' '}
+                      <span className="text-muted-foreground font-normal">
+                        ({age} years old)
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                    Service
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-sm">
+                      {visitRoom.visit.flow?.name ?? 'Unknown service'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                    Examination Time
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Timer className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-sm">
+                      {visitRoom.startTime
+                        ? formatDuration(visitRoom.startTime)
+                        : 'Not started'}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                Examination Time
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Timer className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm">
-                  {current.startTime
-                    ? formatDuration(current.startTime)
-                    : 'Not started'}
-                </span>
+              <Separator />
+
+              <div className="flex gap-2">
+                {canCallNext && index === 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    onClick={onCallNext}
+                    disabled={actionLoading}
+                  >
+                    <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
+                    Call Next Patient
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setFlowVisitId((prev) => (prev === visitRoom.visitId ? null : visitRoom.visitId))}
+                >
+                  <GitBranch className="w-3.5 h-3.5 mr-1.5" />
+                  {isFlowOpen ? 'Hide' : 'View'} Visit Flow
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 ml-1.5 transition-transform duration-200 ${
+                      isFlowOpen ? 'rotate-90' : ''
+                    }`}
+                  />
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => onComplete(visitRoom.id)}
+                  disabled={actionLoading}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Complete Examination
+                </Button>
               </div>
-            </div>
-          </div>
 
-          <Separator />
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => setShowFlow((v) => !v)}
-            >
-              <GitBranch className="w-3.5 h-3.5 mr-1.5" />
-              {showFlow ? 'Hide' : 'View'} Visit Flow
-              <ChevronRight
-                className={`w-3.5 h-3.5 ml-1.5 transition-transform duration-200 ${
-                  showFlow ? 'rotate-90' : ''
-                }`}
-              />
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-              onClick={onComplete}
-              disabled={actionLoading}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-              Complete Examination
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Visit Flow panel - toggle */}
-      {showFlow && <VisitFlowPanel visitId={current.visitId} />}
+              {isFlowOpen && <VisitFlowPanel visitId={visitRoom.visitId} />}
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

@@ -22,13 +22,13 @@ interface DisplayQueueProps {
 
 export function DisplayQueue({ roomId, roomName }: DisplayQueueProps) {
   const [waiting, setWaiting] = useState<VisitRoom[]>([])
-  const [current, setCurrent] = useState<VisitRoom | null>(null)
+  const [inProgress, setInProgress] = useState<VisitRoom[]>([])
   const time = useClock()
 
   useEffect(() => {
     doctorRoomService.getQueue(roomId).then((data) => {
       setWaiting(data.waiting)
-      setCurrent(data.current)
+      setInProgress(data.inProgress)
     })
   }, [roomId])
 
@@ -36,7 +36,7 @@ export function DisplayQueue({ roomId, roomName }: DisplayQueueProps) {
     roomId,
     onQueueUpdated: (payload) => {
       setWaiting(payload.waiting)
-      setCurrent(payload.current)
+      setInProgress(payload.inProgress)
     },
   })
 
@@ -76,33 +76,51 @@ export function DisplayQueue({ roomId, roomName }: DisplayQueueProps) {
             Now Serving
           </p>
 
-          {current ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-5">
-              {/* Avatar */}
-              <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-4 border-emerald-500 flex items-center justify-center">
-                <span className="text-4xl font-bold text-emerald-300">
-                  {current.visit.patient.name.split(' ').pop()?.[0]?.toUpperCase() ?? '?'}
-                </span>
-              </div>
+          {inProgress.length > 0 ? (
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {inProgress.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl font-bold text-emerald-300">
+                        {item.visit.patient.name.split(' ').pop()?.[0]?.toUpperCase() ?? '?'}
+                      </span>
+                    </div>
 
-              <div className="text-center space-y-2">
-                <p className="text-4xl font-bold leading-tight">
-                  {current.visit.patient.name}
-                </p>
-                <p className="text-emerald-300 text-xl">
-                  Year of Birth: {current.visit.patient.yearOfBirth}
-                </p>
-                <span className="inline-block px-4 py-1.5 bg-emerald-500/20 rounded-full text-emerald-300 text-sm font-medium">
-                  {current.visit.patient.patientType.name}
-                </span>
-              </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-2xl font-bold leading-tight truncate">
+                          {item.visit.patient.name}
+                        </p>
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-300 font-semibold flex-shrink-0">
+                          Serving #{index + 1}
+                        </span>
+                      </div>
 
-              <div className="flex items-center gap-2 mt-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                </span>
-                <span className="text-emerald-400 text-sm">Currently Being Examined</span>
+                      <p className="text-emerald-300 text-base mt-1">
+                        Year of Birth: {item.visit.patient.yearOfBirth}
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="inline-block px-3 py-1 bg-emerald-500/20 rounded-full text-emerald-300 text-xs font-medium">
+                          {item.visit.patient.patientType.name}
+                        </span>
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                        </span>
+                        <span className="text-emerald-400 text-xs">Currently Being Examined</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="text-xs text-emerald-300/80 text-right">
+                Now serving {inProgress.length} patient{inProgress.length > 1 ? 's' : ''}
               </div>
             </div>
           ) : (

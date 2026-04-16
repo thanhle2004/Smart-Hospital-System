@@ -200,7 +200,7 @@ export class RoomService {
   }
 
   async getQueue(roomId: number) {
-    const [waiting, current] = await Promise.all([
+    const [waiting, inProgress, inProgressCount] = await Promise.all([
       this.prisma.visitRoom.findMany({
         where: { roomId, status: 'WAITING' },
         include: {
@@ -218,7 +218,7 @@ export class RoomService {
         },
         orderBy: { createdAt: 'asc' }, // FCFS
       }),
-      this.prisma.visitRoom.findFirst({
+      this.prisma.visitRoom.findMany({
         where: { roomId, status: 'IN_PROGRESS' },
         include: {
           visit: {
@@ -233,10 +233,19 @@ export class RoomService {
             },
           },
         },
+        orderBy: { startTime: 'asc' },
+      }),
+      this.prisma.visitRoom.count({
+        where: { roomId, status: 'IN_PROGRESS' },
       }),
     ]);
 
-    return { waiting, current };
+    return {
+      waiting,
+      inProgress,
+      current: inProgress[0] ?? null,
+      inProgressCount,
+    };
   }
 
   // ─── Active rooms (for dashboard) ────────────────────────────────────────
@@ -475,8 +484,8 @@ export class RoomService {
     * Used by VisitService after call/complete/skip to emit queue updates
    */
   async emitQueueEvent(roomId: number) {
-    const { waiting, current } = await this.getQueue(roomId);
-    this.roomGateway.emitQueueUpdated(roomId, { waiting, current });
+    const { waiting, inProgress, current, inProgressCount } = await this.getQueue(roomId);
+    this.roomGateway.emitQueueUpdated(roomId, { waiting, inProgress, current, inProgressCount });
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────

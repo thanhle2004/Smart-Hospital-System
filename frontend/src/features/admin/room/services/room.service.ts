@@ -1,51 +1,28 @@
 import { CreateRoomDto, Room, UpdateRoomDto } from "../types/room.type";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error?.message ?? `Request failed: ${res.status}`);
-  }
-
-  // 204 No Content
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
+import { api } from '@/lib/axios';
 
 export const roomService = {
-  getAll(): Promise<Room[]> {
-    return request<Room[]>("/room");
+  async getAll(): Promise<Room[]> {
+    const response = await api.get<Room[]>('/room');
+    return response.data;
   },
 
-  getOne(id: number): Promise<Room> {
-    return request<Room>(`/room/${id}`);
+  async getOne(id: number): Promise<Room> {
+    const response = await api.get<Room>(`/room/${id}`);
+    return response.data;
   },
 
-  create(dto: CreateRoomDto): Promise<Room> {
-    return request<Room>("/room", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
+  async create(dto: CreateRoomDto): Promise<Room> {
+    const response = await api.post<Room>('/room', dto);
+    return response.data;
   },
 
-  update(id: number, dto: UpdateRoomDto): Promise<Room> {
-    return request<Room>(`/room/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(dto),
-    });
+  async update(id: number, dto: UpdateRoomDto): Promise<Room> {
+    const response = await api.put<Room>(`/room/${id}`, dto);
+    return response.data;
   },
 
-  remove(id: number): Promise<void> {
-    return request<void>(`/room/${id}`, { method: "DELETE" });
+  async remove(id: number): Promise<void> {
+    await api.delete<void>(`/room/${id}`);
   },
 };

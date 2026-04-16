@@ -3,75 +3,40 @@ import {
   CreatePatientTypePayload,
   UpdatePatientTypePayload,
 } from '../types/patient-type.type';
+import { api } from '@/lib/axios';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
-const ENDPOINT = `${BASE_URL}/admin/patient-types`;
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({
-      message: res.statusText,
-    }));
-    throw new Error(error?.message ?? 'Unable to process request');
-  }
-  return res.json() as Promise<T>;
-}
-
-// 👉 wrapper chung
-async function fetchWithAuth(
-  url: string,
-  options: RequestInit = {},
-): Promise<Response> {
-  return fetch(url, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
-}
+const ENDPOINT = '/admin/patient-types';
 
 export const patientTypeService = {
-  getAll(): Promise<PatientType[]> {
-    return fetchWithAuth(ENDPOINT).then((r) =>
-      handleResponse<PatientType[]>(r),
-    );
+  async getAll(): Promise<PatientType[]> {
+    const response = await api.get<PatientType[]>(ENDPOINT);
+    return response.data;
   },
 
-  getOne(id: number): Promise<PatientType> {
-    return fetchWithAuth(`${ENDPOINT}/${id}`).then((r) =>
-      handleResponse<PatientType>(r),
-    );
+  async getOne(id: number): Promise<PatientType> {
+    const response = await api.get<PatientType>(`${ENDPOINT}/${id}`);
+    return response.data;
   },
 
-  create(payload: CreatePatientTypePayload): Promise<PatientType> {
-    return fetchWithAuth(ENDPOINT, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).then((r) => handleResponse<PatientType>(r));
+  async create(payload: CreatePatientTypePayload): Promise<PatientType> {
+    const response = await api.post<PatientType>(ENDPOINT, payload);
+    return response.data;
   },
 
-  update(
+  async update(
     id: number,
     payload: UpdatePatientTypePayload,
   ): Promise<PatientType> {
-    return fetchWithAuth(`${ENDPOINT}/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }).then((r) => handleResponse<PatientType>(r));
+    const response = await api.patch<PatientType>(`${ENDPOINT}/${id}`, payload);
+    return response.data;
   },
 
-  remove(id: number): Promise<void> {
-    return fetchWithAuth(`${ENDPOINT}/${id}`, {
-      method: 'DELETE',
-    }).then((r) => handleResponse<void>(r));
+  async remove(id: number): Promise<void> {
+    await api.delete<void>(`${ENDPOINT}/${id}`);
   },
 
-  toggleActive(id: number): Promise<PatientType> {
-    return fetchWithAuth(`${ENDPOINT}/${id}/toggle-active`, {
-      method: 'PATCH',
-    }).then((r) => handleResponse<PatientType>(r));
+  async toggleActive(id: number): Promise<PatientType> {
+    const response = await api.patch<PatientType>(`${ENDPOINT}/${id}/toggle-active`);
+    return response.data;
   },
 };

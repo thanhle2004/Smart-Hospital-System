@@ -81,6 +81,12 @@ export class VisitRepository {
     return tx.room.findUnique({ where: { id } });
   }
 
+  countInProgressByRoom(roomId: number, tx: DbClient = this.prisma) {
+    return tx.visitRoom.count({
+      where: { roomId, status: 'IN_PROGRESS' },
+    });
+  }
+
   findVisitById(visitId: string, tx: DbClient = this.prisma) {
     return tx.visit.findUnique({
       where: { id: visitId },

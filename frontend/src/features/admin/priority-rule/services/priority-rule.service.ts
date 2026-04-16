@@ -3,59 +3,35 @@ import {
   PriorityRule,
   UpdatePriorityRuleDto,
 } from "../types/priority-rule.type";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error?.message ?? `Request failed: ${res.status}`);
-  }
-
-  return res.json();
-}
+import { api } from '@/lib/axios';
 
 export const priorityRuleService = {
-  getAll(): Promise<PriorityRule[]> {
-    return request<PriorityRule[]>("/admin/priority-rules");
+  async getAll(): Promise<PriorityRule[]> {
+    const response = await api.get<PriorityRule[]>('/admin/priority-rules');
+    return response.data;
   },
 
-  getOne(id: number): Promise<PriorityRule> {
-    return request<PriorityRule>(`/admin/priority-rules/${id}`);
+  async getOne(id: number): Promise<PriorityRule> {
+    const response = await api.get<PriorityRule>(`/admin/priority-rules/${id}`);
+    return response.data;
   },
 
-  create(dto: CreatePriorityRuleDto): Promise<PriorityRule> {
-    return request<PriorityRule>("/admin/priority-rules", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
+  async create(dto: CreatePriorityRuleDto): Promise<PriorityRule> {
+    const response = await api.post<PriorityRule>('/admin/priority-rules', dto);
+    return response.data;
   },
 
-  update(id: number, dto: UpdatePriorityRuleDto): Promise<PriorityRule> {
-    return request<PriorityRule>(`/admin/priority-rules/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
+  async update(id: number, dto: UpdatePriorityRuleDto): Promise<PriorityRule> {
+    const response = await api.patch<PriorityRule>(`/admin/priority-rules/${id}`, dto);
+    return response.data;
   },
 
-  remove(id: number): Promise<void> {
-    return request<void>(`/admin/priority-rules/${id}`, {
-      method: "DELETE",
-    });
+  async remove(id: number): Promise<void> {
+    await api.delete<void>(`/admin/priority-rules/${id}`);
   },
 
-  toggleActive(id: number): Promise<PriorityRule> {
-    return request<PriorityRule>(`/admin/priority-rules/${id}/toggle-active`, {
-      method: "PATCH",
-    });
+  async toggleActive(id: number): Promise<PriorityRule> {
+    const response = await api.patch<PriorityRule>(`/admin/priority-rules/${id}/toggle-active`);
+    return response.data;
   },
 };

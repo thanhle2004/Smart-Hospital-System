@@ -1,52 +1,28 @@
 import { CreateRoomTypeDto, RoomType, UpdateRoomTypeDto } from "../types/room-type.type";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error?.message ?? `Request failed: ${res.status}`);
-  }
-
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
+import { api } from '@/lib/axios';
 
 export const roomTypeService = {
-  getAll(): Promise<RoomType[]> {
-    return request<RoomType[]>("/admin/room-types");
+  async getAll(): Promise<RoomType[]> {
+    const response = await api.get<RoomType[]>('/admin/room-types');
+    return response.data;
   },
 
-  getOne(id: number): Promise<RoomType> {
-    return request<RoomType>(`/admin/room-types/${id}`);
+  async getOne(id: number): Promise<RoomType> {
+    const response = await api.get<RoomType>(`/admin/room-types/${id}`);
+    return response.data;
   },
 
-  create(dto: CreateRoomTypeDto): Promise<RoomType> {
-    return request<RoomType>("/admin/room-types", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
+  async create(dto: CreateRoomTypeDto): Promise<RoomType> {
+    const response = await api.post<RoomType>('/admin/room-types', dto);
+    return response.data;
   },
 
-  update(id: number, dto: UpdateRoomTypeDto): Promise<RoomType> {
-    return request<RoomType>(`/admin/room-types/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
+  async update(id: number, dto: UpdateRoomTypeDto): Promise<RoomType> {
+    const response = await api.patch<RoomType>(`/admin/room-types/${id}`, dto);
+    return response.data;
   },
 
-  remove(id: number): Promise<void> {
-    return request<void>(`/admin/room-types/${id}`, {
-      method: "DELETE",
-    });
+  async remove(id: number): Promise<void> {
+    await api.delete<void>(`/admin/room-types/${id}`);
   },
 };

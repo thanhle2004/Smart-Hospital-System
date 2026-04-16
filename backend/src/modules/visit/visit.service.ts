@@ -104,6 +104,20 @@ export class VisitService {
       throw new ConflictException('Only WAITING patients can be called');
     }
 
+    if (!visitRoom.roomId) {
+      throw new ConflictException('VisitRoom is not assigned to a room');
+    }
+
+    const room = await this.repo.findRoomById(visitRoom.roomId);
+    if (!room || room.capacity <= 0) {
+      throw new ConflictException('Room is not ready to receive patients');
+    }
+
+    const inProgressCount = await this.repo.countInProgressByRoom(visitRoom.roomId);
+    if (inProgressCount >= room.capacity) {
+      throw new ConflictException('Room is at full capacity');
+    }
+
     const updated = await this.repo.updateVisitRoom(visitRoomId, {
       status: 'IN_PROGRESS',
       startTime: new Date(),

@@ -8,7 +8,9 @@ import type { VisitRoom } from '../types/room.type'
 
 export function useRoomQueue(roomId: number) {
   const [waiting, setWaiting] = useState<VisitRoom[]>([])
+  const [inProgress, setInProgress] = useState<VisitRoom[]>([])
   const [current, setCurrent] = useState<VisitRoom | null>(null)
+  const [inProgressCount, setInProgressCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +20,9 @@ export function useRoomQueue(roomId: number) {
     try {
       const data = await doctorRoomService.getQueue(roomId)
       setWaiting(data.waiting)
+      setInProgress(data.inProgress)
       setCurrent(data.current)
+      setInProgressCount(data.inProgressCount)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load queue')
     } finally {
@@ -35,7 +39,9 @@ export function useRoomQueue(roomId: number) {
     roomId,
     onQueueUpdated: (payload) => {
       setWaiting(payload.waiting)
+      setInProgress(payload.inProgress)
       setCurrent(payload.current)
+      setInProgressCount(payload.inProgressCount)
     },
   })
 
@@ -55,19 +61,18 @@ export function useRoomQueue(roomId: number) {
     }
   }, [waiting])
 
-  const completeCurrent = useCallback(async () => {
-    if (!current) return
+  const completeCurrent = useCallback(async (visitRoomId: number) => {
     setActionLoading(true)
     setError(null)
     try {
-      await doctorRoomService.completePatient(current.id)
+      await doctorRoomService.completePatient(visitRoomId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete current patient')
       throw err
     } finally {
       setActionLoading(false)
     }
-  }, [current])
+  }, [])
 
   const skipPatient = useCallback(async (visitRoomId: number) => {
     setActionLoading(true)
@@ -84,7 +89,9 @@ export function useRoomQueue(roomId: number) {
 
   return {
     waiting,
+    inProgress,
     current,
+    inProgressCount,
     loading,
     actionLoading,
     error,

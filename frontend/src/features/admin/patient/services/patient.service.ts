@@ -3,42 +3,30 @@ import type {
   CreatePatientDto,
   UpdatePatientDto,
 } from '../types/patient.type';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    ...init,
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error?.message ?? 'Request failed');
-  }
-
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
+import { api } from '@/lib/axios';
 
 export const patientService = {
-  getAll: (): Promise<Patient[]> => request<Patient[]>('/patient'),
+  getAll: async (): Promise<Patient[]> => {
+    const response = await api.get<Patient[]>('/patient');
+    return response.data;
+  },
 
-  getById: (id: string): Promise<Patient> => request<Patient>(`/patient/${id}`),
+  getById: async (id: string): Promise<Patient> => {
+    const response = await api.get<Patient>(`/patient/${id}`);
+    return response.data;
+  },
 
-  create: (dto: CreatePatientDto): Promise<Patient> =>
-    request<Patient>('/patient', {
-      method: 'POST',
-      body: JSON.stringify(dto),
-    }),
+  create: async (dto: CreatePatientDto): Promise<Patient> => {
+    const response = await api.post<Patient>('/patient', dto);
+    return response.data;
+  },
 
-  update: (id: string, dto: UpdatePatientDto): Promise<Patient> =>
-    request<Patient>(`/patient/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(dto),
-    }),
+  update: async (id: string, dto: UpdatePatientDto): Promise<Patient> => {
+    const response = await api.put<Patient>(`/patient/${id}`, dto);
+    return response.data;
+  },
 
-  delete: (id: string): Promise<void> =>
-    request<void>(`/patient/${id}`, { method: 'DELETE' }),
+  delete: async (id: string): Promise<void> => {
+    await api.delete<void>(`/patient/${id}`);
+  },
 };

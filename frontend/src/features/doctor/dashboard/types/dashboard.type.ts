@@ -117,7 +117,9 @@ export interface VisitFlow {
 export interface SocketQueueUpdatedPayload {
   roomId: number
   waiting: VisitRoom[]
+  inProgress: VisitRoom[]
   current: VisitRoom | null
+  inProgressCount: number
 }
 
 export interface SocketDoctorsUpdatedPayload {

@@ -1,40 +1,33 @@
 import type { User, CreateUserDto, UpdateUserDto } from '../types/user.type';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    ...init,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error?.message ?? 'Request failed');
-  }
-  return res.json() as Promise<T>;
-}
+import { api } from '@/lib/axios';
 
 export const userService = {
-  getAll: (): Promise<User[]> => request<User[]>('/users'),
+  getAll: async (): Promise<User[]> => {
+    const response = await api.get<User[]>('/users');
+    return response.data;
+  },
 
-  getById: (id: string): Promise<User> => request<User>(`/users/${id}`),
+  getById: async (id: string): Promise<User> => {
+    const response = await api.get<User>(`/users/${id}`);
+    return response.data;
+  },
 
-  create: (dto: CreateUserDto): Promise<User> =>
-    request<User>('/users', {
-      method: 'POST',
-      body: JSON.stringify(dto),
-    }),
+  create: async (dto: CreateUserDto): Promise<User> => {
+    const response = await api.post<User>('/users', dto);
+    return response.data;
+  },
 
-  update: (id: string, dto: UpdateUserDto): Promise<User> =>
-    request<User>(`/users/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(dto),
-    }),
+  update: async (id: string, dto: UpdateUserDto): Promise<User> => {
+    const response = await api.patch<User>(`/users/${id}`, dto);
+    return response.data;
+  },
 
-  deactivate: (id: string): Promise<User> =>
-    request<User>(`/users/${id}/deactivate`, { method: 'PATCH' }),
+  deactivate: async (id: string): Promise<User> => {
+    const response = await api.patch<User>(`/users/${id}/deactivate`);
+    return response.data;
+  },
 
-  delete: (id: string): Promise<void> =>
-    request<void>(`/users/${id}`, { method: 'DELETE' }),
+  delete: async (id: string): Promise<void> => {
+    await api.delete<void>(`/users/${id}`);
+  },
 };

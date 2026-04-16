@@ -45,7 +45,9 @@ export default function DoctorRoomPage() {
   const { room, loading: roomLoading, refetch: refetchRoom } = useRoomDetail(roomId)
   const {
     waiting,
+    inProgress,
     current,
+    inProgressCount,
     loading: queueLoading,
     actionLoading,
     callNext,
@@ -69,12 +71,12 @@ export default function DoctorRoomPage() {
     }
   }
 
-  const handleComplete = async () => {
+  const handleComplete = async (visitRoomId: number) => {
     try {
-      await completeCurrent()
-      toast.success('Complete current patient')
+      await completeCurrent(visitRoomId)
+      toast.success('Complete patient')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'There was an error completing the current patient')
+      toast.error(err instanceof Error ? err.message : 'There was an error completing the patient')
     }
   }
 
@@ -129,6 +131,8 @@ export default function DoctorRoomPage() {
       </div>
     )
   }
+
+  const canCallNext = waiting.length > 0 && inProgressCount < room.capacity
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -194,14 +198,16 @@ export default function DoctorRoomPage() {
         </div>
 
         {/* Call-next banner - shown when no patient is in progress */}
-        {!current && !queueLoading && waiting.length > 0 && (
+        {!queueLoading && canCallNext && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
             <div>
               <p className="font-semibold text-amber-900">
                 There are {waiting.length} patients waiting
               </p>
               <p className="text-sm text-amber-700 mt-0.5">
-                Click the button to call the next patient for examination
+                {room.capacity > 1
+                  ? `Current in examination: ${inProgressCount}/${room.capacity}. You can call more patients.`
+                  : 'Click the button to call the next patient for examination'}
               </p>
             </div>
             <Button
@@ -234,9 +240,10 @@ export default function DoctorRoomPage() {
           {/* RIGHT col: Current patient + flow */}
           <div className="col-span-12 lg:col-span-7 space-y-4">
             <CurrentPatient
-              current={current}
+              inProgress={inProgress}
               loading={queueLoading}
               waitingCount={waiting.length}
+              canCallNext={canCallNext}
               actionLoading={actionLoading}
               onComplete={handleComplete}
               onCallNext={handleCallNext}

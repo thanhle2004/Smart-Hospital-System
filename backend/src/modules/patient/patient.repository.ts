@@ -74,4 +74,38 @@ export class PatientRepository {
       },
     });
   }
+
+  findAgeMatchedPatientTypeRule(age: number) {
+    return this.prisma.priorityRule.findFirst({
+      where: {
+        isActive: true,
+        patientTypeId: { not: null },
+        patientType: { isActive: true },
+        AND: [
+          {
+            OR: [{ minAge: null }, { minAge: { lte: age } }],
+          },
+          {
+            OR: [{ maxAge: null }, { maxAge: { gte: age } }],
+          },
+          {
+            OR: [{ minAge: { not: null } }, { maxAge: { not: null } }],
+          },
+        ],
+      },
+      orderBy: [{ applyOrder: 'asc' }, { priorityValue: 'desc' }],
+      select: { patientTypeId: true },
+    });
+  }
+
+  findDefaultNormalPatientType() {
+    return this.prisma.patientType.findFirst({
+      where: {
+        isActive: true,
+        OR: [{ code: 'NORMAL' }, { code: 'normal' }, { name: 'Normal' }, { name: 'normal' }],
+      },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+  }
 }

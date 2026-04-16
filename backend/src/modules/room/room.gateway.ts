@@ -14,7 +14,9 @@ import { Logger } from '@nestjs/common';
 // Queue payload shape - matches SocketQueueUpdatedPayload on frontend
 export interface QueueUpdatedPayload {
   waiting: any[];
+  inProgress: any[];
   current: any | null;
+  inProgressCount: number;
 }
 
 // Doctors payload shape - matches SocketDoctorsUpdatedPayload on frontend
@@ -80,7 +82,9 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .emit(`room:${roomId}:queue-updated`, {
         roomId,
         waiting: payload.waiting,
+        inProgress: payload.inProgress,
         current: payload.current,
+        inProgressCount: payload.inProgressCount,
       });
   }
 

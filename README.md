@@ -118,9 +118,9 @@ The platform reduces waiting time through multiple mechanisms:
 | Monorepo | Turbo, pnpm workspaces |
 | Backend API | NestJS (TypeScript) |
 | ORM | Prisma ORM |
-| Database | **MySQL** |
+| Database | MySQL |
 | Realtime | Socket.IO (NestJS WebSocket Gateway + socket.io-client) |
-| Authentication | JWT (access + refresh), cookies, Passport JWT |
+| Authentication | JWT (access + refresh), cookies, Passport JWT |  
 | Validation | Zod (custom NestJS validation pipe) |
 | API Docs | Swagger (`/docs`) |
 | Frontend | Next.js (App Router), React |

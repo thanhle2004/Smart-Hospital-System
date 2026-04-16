@@ -5,8 +5,8 @@ import type {
   RegisterResponse,
   MeResponse,
 } from '../types/auth.type';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+import { api } from '@/lib/axios';
+import axios from 'axios';
 
 const STATUS_MESSAGE_MAP: Record<number, string> = {
   400: 'The request is invalid. Please check your input and try again.',
@@ -58,65 +58,69 @@ function extractErrorMessage(body: unknown, status: number): string {
   return mappedByStatus;
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(extractErrorMessage(body, res.status));
+function toErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    if (typeof status === 'number') {
+      return extractErrorMessage(error.response?.data ?? null, status);
+    }
   }
-  return res.json() as Promise<T>;
+
+  return 'Request failed. Please try again.';
 }
 
 export const authService = {
   async login(payload: LoginRequest): Promise<LoginResponse> {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<LoginResponse>(res);
+    try {
+      const response = await api.post<LoginResponse>('/auth/login', payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 
   async register(payload: RegisterRequest): Promise<RegisterResponse> {
-    const res = await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<RegisterResponse>(res);
+    try {
+      const response = await api.post<RegisterResponse>('/auth/register', payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 
   async refresh(): Promise<LoginResponse> {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return handleResponse<LoginResponse>(res);
+    try {
+      const response = await api.post<LoginResponse>('/auth/refresh');
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 
   async logout(): Promise<{ message: string }> {
-    const res = await fetch(`${BASE_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return handleResponse<{ message: string }>(res);
+    try {
+      const response = await api.post<{ message: string }>('/auth/logout');
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 
   async me(): Promise<MeResponse> {
-    const res = await fetch(`${BASE_URL}/auth/me`, {
-      credentials: 'include',
-    });
-    return handleResponse<MeResponse>(res);
+    try {
+      const response = await api.get<MeResponse>('/auth/me');
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 
   async verifyPassword(password: string): Promise<{ verified: boolean }> {
-    const res = await fetch(`${BASE_URL}/auth/verify-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ password }),
-    });
-    return handleResponse<{ verified: boolean }>(res);
+    try {
+      const response = await api.post<{ verified: boolean }>('/auth/verify-password', { password });
+      return response.data;
+    } catch (error) {
+      throw new Error(toErrorMessage(error));
+    }
   },
 };

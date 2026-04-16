@@ -9,7 +9,6 @@ import { PatientTypeTable } from '@/features/admin/patient-type/components/Patie
 import { PatientTypeFormModal } from '@/features/admin/patient-type/components/PatientTypeFormModal';
 import { DeleteConfirmDialog } from '@/features/admin/patient-type/components/DeleteConfirmDialog';
 import { PatientType, CreatePatientTypePayload } from '@/features/admin/patient-type/types/patient-type.type';
-import { Toaster } from 'sonner';
 
 export default function PatientTypePage() {
   const router = useRouter();
@@ -44,7 +43,6 @@ export default function PatientTypePage() {
 
   return (
     <>
-      <Toaster richColors position="top-right" />
 
       <main className="container mx-auto py-8 px-4 md:px-6 lg:px-8 max-w-7xl space-y-6">
         {/* Header */}

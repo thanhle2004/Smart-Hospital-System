@@ -15,7 +15,6 @@ export function useProfileSetup() {
   const [email, setEmail] = useState('');
   const [phone] = useState(phoneFromQuery);
   const [yearOfBirth, setYearOfBirth] = useState(1990);
-  const [patientTypeId, setPatientTypeId] = useState(1);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +34,6 @@ export function useProfileSetup() {
         email: email || undefined,
         phone,
         yearOfBirth,
-        patientTypeId,
       });
 
       router.push('/patient/dashboard');
@@ -53,8 +51,6 @@ export function useProfileSetup() {
     setEmail,
     phone,
     yearOfBirth,
-    patientTypeId,
-    setPatientTypeId,
     setYearOfBirth,
     submit,
     loading,

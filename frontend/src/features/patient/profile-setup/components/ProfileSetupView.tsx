@@ -4,12 +4,10 @@ interface Props {
   name: string;
   email: string;
   phone: string;
-  patientTypeId: number;
   loading: boolean;
   error: string;
   onNameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
-  onTypeChange: (v: number) => void;
   onYearOfBirthChange: (v: number) => void;
   onSubmit: () => void;
 }
@@ -19,13 +17,11 @@ export default function ProfileSetupView({
   email,
   phone,
   yearOfBirth,
-  patientTypeId,
   loading,
   error,
   onNameChange,
   onEmailChange,
   onYearOfBirthChange,
-  onTypeChange,
   onSubmit,
 }: Props) {
   return (
@@ -75,18 +71,6 @@ export default function ProfileSetupView({
             onChange={(e) => onYearOfBirthChange(Number(e.target.value))}
             className="w-full h-12 px-3 border rounded-lg"
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Patient Type</label>
-          <select
-            value={patientTypeId}
-            onChange={(e) => onTypeChange(Number(e.target.value))}
-            className="w-full h-12 px-3 border rounded-lg"
-          >
-            <option value={1}>Normal</option>
-            <option value={2}>VIP</option>
-          </select>
         </div>
 
         {error && (

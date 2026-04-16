@@ -1,31 +1,12 @@
 // features/doctor/room/services/visit-flow.service.ts
+import { api } from '@/lib/axios'
 import type { VisitFlow } from '../types/room.type'
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include',
-  })
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error?.message ?? `Request failed: ${res.status}`)
-  }
-
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
 
 export const visitFlowService = {
   /** Get all visit-flow steps for a visit */
-  getByVisit(visitId: string): Promise<VisitFlow[]> {
-    return request<VisitFlow[]>(`/visit-flows/visit/${visitId}`)
+  async getByVisit(visitId: string): Promise<VisitFlow[]> {
+    const response = await api.get<VisitFlow[]>(`/visit-flows/visit/${visitId}`)
+    return response.data
   },
 
   /** Manually add roomType to flow */
@@ -34,42 +15,39 @@ export const visitFlowService = {
     roomTypeId: number,
     requiredVisitFlowIds: number[] = [],
   ): Promise<VisitFlow> {
-    return request<VisitFlow>('/visit-flows', {
-      method: 'POST',
-      body: JSON.stringify({ visitId, roomTypeId, requiredVisitFlowIds }),
-    })
+    return api
+      .post<VisitFlow>('/visit-flows', { visitId, roomTypeId, requiredVisitFlowIds })
+      .then((response) => response.data)
   },
 
   /** Skip one step (uses visitFlowId) */
-  skipStep(visitFlowId: number): Promise<VisitFlow> {
-    return request<VisitFlow>(`/visit-flows/${visitFlowId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isSkipped: true }),
-    })
+  async skipStep(visitFlowId: number): Promise<VisitFlow> {
+    const response = await api.patch<VisitFlow>(`/visit-flows/${visitFlowId}`, { isSkipped: true })
+    return response.data
   },
 
   /** Unskip one step (uses visitFlowId) */
-  unskipStep(visitFlowId: number): Promise<VisitFlow> {
-    return request<VisitFlow>(`/visit-flows/${visitFlowId}/unskip`, {
-      method: 'PATCH',
-    })
+  async unskipStep(visitFlowId: number): Promise<VisitFlow> {
+    const response = await api.patch<VisitFlow>(`/visit-flows/${visitFlowId}/unskip`)
+    return response.data
   },
 
   /** Skip all skippable steps except the kept step */
-  skipAllExcept(visitId: string, keepVisitFlowId: number): Promise<VisitFlow[]> {
-    return request<VisitFlow[]>(`/visit-flows/visit/${visitId}/skip-all-except`, {
-      method: 'POST',
-      body: JSON.stringify({ keepVisitFlowId }),
+  async skipAllExcept(visitId: string, keepVisitFlowId: number): Promise<VisitFlow[]> {
+    const response = await api.post<VisitFlow[]>(`/visit-flows/visit/${visitId}/skip-all-except`, {
+      keepVisitFlowId,
     })
+    return response.data
   },
 
   /** Remove manually added step (uses visitFlowId) */
-  removeStep(visitFlowId: number): Promise<void> {
-    return request<void>(`/visit-flows/${visitFlowId}`, { method: 'DELETE' })
+  async removeStep(visitFlowId: number): Promise<void> {
+    await api.delete<void>(`/visit-flows/${visitFlowId}`)
   },
 
   /** Get all room types */
-  getAllRoomTypes(): Promise<Array<{ id: number; name: string }>> {
-    return request<Array<{ id: number; name: string }>>('/room-types')
+  async getAllRoomTypes(): Promise<Array<{ id: number; name: string }>> {
+    const response = await api.get<Array<{ id: number; name: string }>>('/room-types')
+    return response.data
   },
 }

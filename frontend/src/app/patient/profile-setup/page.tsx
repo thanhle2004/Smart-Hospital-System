@@ -12,13 +12,11 @@ function ProfileSetupContent() {
       name={state.name}
       email={state.email}
       phone={state.phone}
-      patientTypeId={state.patientTypeId}
       loading={state.loading}
       error={state.error}
       onNameChange={state.setName}
       onEmailChange={state.setEmail}
       onYearOfBirthChange={state.setYearOfBirth}
-      onTypeChange={state.setPatientTypeId}
       onSubmit={state.submit}
     />
   );

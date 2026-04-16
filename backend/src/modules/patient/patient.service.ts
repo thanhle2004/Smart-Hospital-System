@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PatientRepository } from './patient.repository';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -11,6 +12,29 @@ import { createHmac, timingSafeEqual } from 'crypto';
 @Injectable()
 export class PatientService {
   constructor(private readonly repo: PatientRepository) {}
+
+  private calculateAge(yearOfBirth: number) {
+    return new Date().getFullYear() - yearOfBirth;
+  }
+
+  private async resolvePatientTypeIdForCreate(dto: CreatePatientDto) {
+    if (dto.patientTypeId) {
+      return dto.patientTypeId;
+    }
+
+    const age = this.calculateAge(dto.yearOfBirth);
+    const ageMatchedRule = await this.repo.findAgeMatchedPatientTypeRule(age);
+    if (ageMatchedRule?.patientTypeId) {
+      return ageMatchedRule.patientTypeId;
+    }
+
+    const normalType = await this.repo.findDefaultNormalPatientType();
+    if (normalType?.id) {
+      return normalType.id;
+    }
+
+    throw new BadRequestException('Default patient type NORMAL is not configured or inactive');
+  }
 
   private getPatientSessionSecret() {
     return process.env.PATIENT_SESSION_SECRET || process.env.JWT_ACCESS_SECRET || 'dev-patient-session-secret';
@@ -41,7 +65,8 @@ export class PatientService {
 
   async create(dto: CreatePatientDto) {
     try {
-      return await this.repo.create(dto);
+      const patientTypeId = await this.resolvePatientTypeIdForCreate(dto);
+      return await this.repo.create({ ...dto, patientTypeId });
     } catch (error: any) {
       if (error.code === 'P2002') {
         throw new ConflictException('Email or phone already exists');
